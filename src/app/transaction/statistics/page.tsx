@@ -1,9 +1,14 @@
-export default function TransactionStatisticsPage() {
+'use client';
+
+import PageHeader from '@/components/common/PageHeader';
+
+export default function TransactionStatistics() {
   return (
-    <div className="container mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-[#ebf0ec] mb-8">
-        거래통계
-      </h1>
+    <div className="container mx-auto px-4 py-8">
+      <PageHeader 
+        title="거래 통계" 
+        description="수입과 지출 내역을 다양한 차트와 통계로 분석하세요."
+      />
     </div>
   );
 } 
