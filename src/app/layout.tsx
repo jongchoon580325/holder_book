@@ -2,10 +2,11 @@ import './globals.css';
 import type { Metadata } from 'next';
 import Navbar from '@/components/common/Navbar';
 import Footer from '@/components/common/Footer';
+import FireworkProvider from '@/components/animations/FireworkProvider';
 
 export const metadata: Metadata = {
-  title: 'Money Book',
-  description: 'Smart Personal Finance Management System',
+  title: '스마트 재무관리',
+  description: '당신의 재무를 스마트하게 관리하세요.',
 };
 
 export default function RootLayout({
@@ -15,9 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="flex flex-col min-h-screen">
+      <body className="bg-[#41416e] min-h-screen flex flex-col">
+        <FireworkProvider />
         <Navbar />
-        <main className="flex-grow">
+        <main className="flex-1">
           {children}
         </main>
         <Footer />

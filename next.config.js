@@ -5,29 +5,38 @@ const nextConfig = {
   experimental: {
     appDir: true
   },
-  poweredByHeader: false,
-  webpack: (config, { dev, isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-      };
+  // Fast Refresh 설정
+  webpackDevMiddleware: config => {
+    config.watchOptions = {
+      poll: 1000,
+      aggregateTimeout: 300,
+      ignored: ['**/.git/**', '**/node_modules/**', '**/.next/**']
     }
-
-    if (dev) {
-      config.watchOptions = {
-        ...config.watchOptions,
-        followSymlinks: true,
-        ignored: ['**/node_modules', '**/.next'],
-        poll: 1000,
-      };
-    }
-
-    return config;
+    return config
   },
-  // 개발 서버 설정
+  // 개발 서버 안정성 설정
+  webpack: (config, { dev, isServer }) => {
+    if (!isServer && dev) {
+      // 클라이언트 사이드 개발 설정
+      config.optimization = {
+        ...config.optimization,
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          name: false,
+        },
+      }
+
+      // 파일 시스템 감시 설정
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/.git/**', '**/node_modules/**', '**/.next/**'],
+      }
+    }
+    return config
+  },
+  // 개발 서버 표시기
   devIndicators: {
     buildActivity: true,
     buildActivityPosition: 'bottom-right',
