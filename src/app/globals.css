@@ -3,8 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --foreground: #ffffff;
-  --background: #111827;
+  --foreground-rgb: 235, 240, 236;
+  --background-rgb: 65, 65, 110;
+  --subtitle-rgb: 195, 199, 196;
 }
 
 @theme inline {
@@ -23,7 +24,15 @@
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+h1 {
+  color: rgb(var(--foreground-rgb));
+}
+
+h2, h3, h4, h5, h6 {
+  color: rgb(var(--subtitle-rgb));
 }
