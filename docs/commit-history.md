@@ -4,18 +4,43 @@
 
 ### 2025-04-17
 
-1. **설정: Next.js 및 의존성 버전 업데이트** (1b5a6e3)
+6. **개선: Fast Refresh 및 비동기 처리 최적화** (현재 작업 중)
+   - webpack 설정 최적화
+   - 비동기 처리 방식 개선
+   - Suspense를 활용한 로딩 처리 추가
+   - 컴포넌트 구조 리팩토링
+
+5. **설정: Next.js 및 의존성 버전 업데이트** (1b5a6e3)
    - Next.js 버전을 13.4.19로 업데이트
    - React 및 React DOM 버전을 18.2.0으로 설정
    - 개발 의존성 패키지들의 버전 업데이트
    - Next.js 설정에 실험적 기능(appDir) 추가
 
-2. **설정: Next.js 및 Tailwind CSS 설정 초기화** (be6e56a)
+4. **디자인: 전체 색상 테마 적용** (c325842)
+   - 메뉴바와 푸터 배경색을 `#bebec2`로 변경
+   - 본문 텍스트 색상 설정
+     - 대제목: `#ebf0ec`
+     - 소제목: `#c3c7c4`
+     - 배경색: `#41416e`
+   - 메뉴 항목 스타일 개선
+     - 활성 메뉴: `#41416e`
+     - 비활성 메뉴: `#41416e/80`
+   - 전역 스타일 설정 추가
+
+3. **설정: Next.js 및 Tailwind CSS 설정 초기화** (be6e56a)
    - Next.js 설정 파일을 TypeScript에서 JavaScript로 변경
    - Tailwind CSS 및 PostCSS 설정 추가
    - 기본 페이지 스타일 및 레이아웃 구성
    - 프로젝트 메인 페이지 UI 구현
 
-3. **Initial commit from Create Next App** (6984b85)
+2. **기능: 기본 페이지 구조 구현** (be6e56a)
+   - 메인 레이아웃 컴포넌트 생성
+   - 네비게이션 바 구현
+   - 푸터 컴포넌트 추가
+   - 페이지 라우팅 설정
+
+1. **Initial commit from Create Next App** (6984b85)
    - Next.js 프로젝트 생성
-   - 기본 프로젝트 구조 설정 
+   - 기본 프로젝트 구조 설정
+   - TypeScript 설정 추가
+   - 기본 의존성 설치 
