@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import TransactionForm from '@/components/transaction/TransactionForm';
 import TransactionTable from '@/components/transaction/TransactionTable';
@@ -8,18 +8,44 @@ import { Transaction, NewTransaction } from '@/types/transaction';
 
 export default function TransactionInput() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  // 클라이언트 사이드 렌더링 확인
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleSaveTransaction = (transaction: NewTransaction) => {
-    setTransactions([...transactions, { ...transaction, id: Date.now() }]);
+    const newTransaction: Transaction = {
+      ...transaction,
+      id: Date.now()
+    };
+    setTransactions(prev => [...prev, newTransaction]);
   };
 
   const handleUpdateTransaction = (id: number, updatedTransaction: Transaction) => {
-    setTransactions(transactions.map(t => t.id === id ? { ...updatedTransaction, id } : t));
+    setTransactions(prev => 
+      prev.map(t => t.id === id ? { ...updatedTransaction, id } : t)
+    );
   };
 
   const handleDeleteTransaction = (id: number) => {
-    setTransactions(transactions.filter(t => t.id !== id));
+    setTransactions(prev => prev.filter(t => t.id !== id));
   };
+
+  // 클라이언트 사이드 렌더링 전에는 로딩 상태 표시
+  if (!isClient) {
+    return (
+      <main className="min-h-[calc(100vh-8rem)] bg-[#17195c] text-white p-6">
+        <div className="container mx-auto">
+          <div className="animate-pulse">
+            <div className="h-8 bg-white/10 rounded w-1/4 mb-4"></div>
+            <div className="h-4 bg-white/10 rounded w-2/4 mb-8"></div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-[calc(100vh-8rem)] bg-[#17195c] text-white p-6">
