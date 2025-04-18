@@ -4,22 +4,12 @@ import { useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import TransactionForm from '@/components/transaction/TransactionForm';
 import TransactionTable from '@/components/transaction/TransactionTable';
-
-interface Transaction {
-  id?: number;
-  amount: number;
-  type: 'income' | 'expense';
-  date: string;
-  category: string;
-  subcategory: string;
-  item: string;
-  memo: string;
-}
+import { Transaction, NewTransaction } from '@/types/transaction';
 
 export default function TransactionInput() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const handleSaveTransaction = (transaction: Transaction) => {
+  const handleSaveTransaction = (transaction: NewTransaction) => {
     setTransactions([...transactions, { ...transaction, id: Date.now() }]);
   };
 

@@ -1,17 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-
-interface Transaction {
-  id: number;
-  amount: number;
-  type: 'income' | 'expense';
-  date: string;
-  category: string;
-  subcategory: string;
-  item: string;
-  memo: string;
-}
+import { Transaction } from '@/types/transaction';
 
 interface TransactionTableProps {
   transactions: Transaction[];

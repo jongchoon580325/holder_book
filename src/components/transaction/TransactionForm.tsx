@@ -1,20 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { NewTransaction } from '@/types/transaction';
 
 interface TransactionFormProps {
   type: 'income' | 'expense';
-  onSave: (transaction: Transaction) => void;
-}
-
-interface Transaction {
-  amount: number;
-  type: 'income' | 'expense';
-  date: string;
-  category: string;
-  subcategory: string;
-  item: string;
-  memo: string;
+  onSave: (transaction: NewTransaction) => void;
 }
 
 export default function TransactionForm({ type, onSave }: TransactionFormProps) {
