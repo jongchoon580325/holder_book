@@ -12,7 +12,7 @@ export default function TransactionStatistics() {
 
   if (!isClient) {
     return (
-      <main className="min-h-[calc(100vh-8rem)] bg-[#5b4d6e] text-white p-6">
+      <main className="min-h-[calc(100vh-8rem)] bg-[#365749] text-white p-6">
         <div className="container mx-auto">
           <div className="animate-pulse">
             <div className="h-8 bg-white/10 rounded w-1/4 mb-4"></div>
@@ -24,31 +24,47 @@ export default function TransactionStatistics() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-8rem)] bg-[#5b4d6e] text-white p-6">
+    <main className="min-h-[calc(100vh-8rem)] bg-[#365749] text-white p-6">
       <div className="container mx-auto space-y-8">
         <PageHeader 
           title="거래 통계" 
-          description="수입과 지출 내역을 다양한 차트와 통계로 분석하세요."
+          description="수입과 지출 내역을 다양한 차트로 분석해보세요."
         />
-        
-        {/* 통계 섹션 */}
-        <section className="bg-[#6d5a80]/40 rounded-lg p-6 backdrop-blur-sm shadow-lg">
-          <h2 className="text-2xl font-bold mb-6">통계 차트</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white/5 rounded-lg p-6">
-              <h3 className="text-xl font-semibold mb-4">수입/지출 비율</h3>
-              <div className="h-64 flex items-center justify-center text-white/50">
-                차트 구현 예정
-              </div>
+
+        {/* 통계 차트 섹션 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* 월별 수입/지출 추이 */}
+          <section className="bg-white/10 rounded-lg p-6 backdrop-blur-sm shadow-lg">
+            <h2 className="text-2xl font-bold mb-6">월별 수입/지출 추이</h2>
+            <div className="h-80 flex items-center justify-center border border-white/20 rounded">
+              <p className="text-white/60">차트 구현 예정</p>
             </div>
-            <div className="bg-white/5 rounded-lg p-6">
-              <h3 className="text-xl font-semibold mb-4">카테고리별 지출</h3>
-              <div className="h-64 flex items-center justify-center text-white/50">
-                차트 구현 예정
-              </div>
+          </section>
+
+          {/* 카테고리별 지출 분포 */}
+          <section className="bg-white/10 rounded-lg p-6 backdrop-blur-sm shadow-lg">
+            <h2 className="text-2xl font-bold mb-6">카테고리별 지출 분포</h2>
+            <div className="h-80 flex items-center justify-center border border-white/20 rounded">
+              <p className="text-white/60">차트 구현 예정</p>
             </div>
-          </div>
-        </section>
+          </section>
+
+          {/* 일별 수입/지출 패턴 */}
+          <section className="bg-white/10 rounded-lg p-6 backdrop-blur-sm shadow-lg">
+            <h2 className="text-2xl font-bold mb-6">일별 수입/지출 패턴</h2>
+            <div className="h-80 flex items-center justify-center border border-white/20 rounded">
+              <p className="text-white/60">차트 구현 예정</p>
+            </div>
+          </section>
+
+          {/* 예산 대비 실제 지출 */}
+          <section className="bg-white/10 rounded-lg p-6 backdrop-blur-sm shadow-lg">
+            <h2 className="text-2xl font-bold mb-6">예산 대비 실제 지출</h2>
+            <div className="h-80 flex items-center justify-center border border-white/20 rounded">
+              <p className="text-white/60">차트 구현 예정</p>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   );
