@@ -7,8 +7,7 @@ const CATEGORY_HEADERS = {
   type: '유형',
   section: '관',
   category: '항',
-  subcategory: '목',
-  order: '순서'
+  subcategory: '목'
 };
 
 const TRANSACTION_HEADERS = {
@@ -37,7 +36,6 @@ export const parseCSV = (file: File): Promise<any[]> => {
   return new Promise((resolve, reject) => {
     Papa.parse(file, {
       header: true,
-      encoding: 'UTF-8',
       skipEmptyLines: true,
       transformHeader: (header) => {
         // 한글 헤더를 영문 키로 변환
@@ -189,4 +187,59 @@ export const validateCategoryData = (data: any[]): boolean => {
 
     return validType && hasRequiredValues;
   });
+};
+
+// 카테고리 데이터 가져오기 및 덮어쓰기
+export const importCategories = async (file: File): Promise<void> => {
+  try {
+    const data = await parseCSV(file);
+    
+    if (!validateCategoryData(data)) {
+      throw new Error('유효하지 않은 카테고리 데이터입니다. 파일 형식을 확인해주세요.');
+    }
+
+    // 카테고리 데이터 형식으로 변환
+    const categories = data.map(item => ({
+      type: item.type,
+      section: item.section,
+      category: item.category,
+      subcategory: item.subcategory || ''
+    }));
+
+    // IndexedDB에 덮어쓰기
+    await categoryDB.replaceAllCategories(categories);
+  } catch (error) {
+    console.error('카테고리 가져오기 실패:', error);
+    throw error;
+  }
+};
+
+// 거래내역 데이터 가져오기 및 덮어쓰기
+export const importTransactions = async (file: File): Promise<void> => {
+  try {
+    const data = await parseCSV(file);
+    
+    if (!validateTransactionData(data)) {
+      throw new Error('유효하지 않은 거래내역 데이터입니다. 파일 형식을 확인해주세요.');
+    }
+
+    // 거래내역 데이터 형식으로 변환
+    const transactions = data.map(item => ({
+      type: item.type,
+      date: item.date,
+      section: item.section,
+      category: item.category,
+      subcategory: item.subcategory || '',
+      amount: typeof item.amount === 'string' ? 
+        parseInt(item.amount.replace(/,/g, '')) : 
+        item.amount,
+      memo: item.memo || ''
+    }));
+
+    // IndexedDB에 덮어쓰기
+    await transactionDB.replaceAllTransactions(transactions);
+  } catch (error) {
+    console.error('거래내역 가져오기 실패:', error);
+    throw error;
+  }
 }; 

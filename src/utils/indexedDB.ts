@@ -175,34 +175,6 @@ class CategoryDB {
         
         getAllRequest.onsuccess = () => {
           const categories = getAllRequest.result || [];
-          
-          // 중복 체크
-          const isDuplicate = categories.some(existingCat => {
-            const isSame = this.isSameCategory(existingCat, category);
-            if (isSame) {
-              console.log('Duplicate found:', {
-                existing: {
-                  type: existingCat.type,
-                  section: existingCat.section,
-                  category: existingCat.category,
-                  subcategory: existingCat.subcategory
-                },
-                new: {
-                  type: category.type,
-                  section: category.section,
-                  category: category.category,
-                  subcategory: category.subcategory
-                }
-              });
-            }
-            return isSame;
-          });
-
-          if (isDuplicate) {
-            reject(new Error('이미 존재하는 카테고리입니다.'));
-            return;
-          }
-
           const maxOrder = categories.reduce((max, cat) => 
             Math.max(max, typeof cat.order === 'number' ? cat.order : -1), -1);
 
@@ -351,6 +323,80 @@ class CategoryDB {
       });
     } catch (error) {
       console.error('Error during categories retrieval:', error);
+      throw error;
+    }
+  }
+
+  async replaceAllCategories(categories: Category[]): Promise<void> {
+    try {
+      await this.ensureConnection();
+      
+      if (!this.db || !this.isInitialized) {
+        throw new Error('Database is not initialized');
+      }
+
+      return new Promise((resolve, reject) => {
+        try {
+          const transaction = this.db!.transaction([this.storeName], 'readwrite');
+          const store = transaction.objectStore(this.storeName);
+
+          // 트랜잭션 완료 이벤트 핸들러
+          transaction.oncomplete = () => {
+            console.log('Transaction completed successfully');
+            resolve();
+          };
+
+          // 트랜잭션 에러 핸들러
+          transaction.onerror = (event) => {
+            const error = (event.target as IDBTransaction).error;
+            console.error('Transaction failed:', error?.message || event);
+            reject(new Error(`Transaction failed: ${error?.message || 'Unknown error'}`));
+          };
+
+          // 기존 데이터 모두 삭제
+          store.clear().onsuccess = () => {
+            console.log('Successfully cleared existing categories');
+            
+            // 정렬된 순서로 추가
+            const sortedCategories = categories
+              .map((category) => ({
+                ...category,
+                id: crypto.randomUUID(),
+                section: category.section.trim(),
+                category: category.category.trim(),
+                subcategory: category.subcategory?.trim() || ''
+              }))
+              .sort((a, b) => {
+                // 유형 우선 정렬 (수입이 먼저)
+                if (a.type !== b.type) {
+                  return a.type === 'income' ? -1 : 1;
+                }
+                // 관 기준 정렬
+                if (a.section !== b.section) {
+                  return a.section.localeCompare(b.section);
+                }
+                // 항 기준 정렬
+                if (a.category !== b.category) {
+                  return a.category.localeCompare(b.category);
+                }
+                // 목 기준 정렬
+                return (a.subcategory || '').localeCompare(b.subcategory || '');
+              });
+
+            // order 값 부여
+            sortedCategories.forEach((category, index) => {
+              store.add({ ...category, order: index });
+            });
+
+            console.log(`Added ${sortedCategories.length} categories for import`);
+          };
+        } catch (error) {
+          console.error('Error in transaction:', error);
+          reject(error);
+        }
+      });
+    } catch (error) {
+      console.error('Error during categories replacement:', error);
       throw error;
     }
   }
@@ -568,6 +614,77 @@ class TransactionDB {
       });
     } catch (error) {
       console.error('Error during transaction deletion:', error);
+      throw error;
+    }
+  }
+
+  async replaceAllTransactions(transactions: Transaction[]): Promise<void> {
+    try {
+      await this.ensureConnection();
+      
+      if (!this.db || !this.isInitialized) {
+        throw new Error('Database is not initialized');
+      }
+
+      return new Promise((resolve, reject) => {
+        const transaction = this.db!.transaction([this.storeName], 'readwrite');
+        const store = transaction.objectStore(this.storeName);
+
+        // 기존 데이터 모두 삭제
+        const clearRequest = store.clear();
+
+        clearRequest.onerror = (event) => {
+          const error = (event.target as IDBRequest).error;
+          console.error('Failed to clear transactions:', error?.message || event);
+          reject(new Error(`Failed to clear transactions: ${error?.message || 'Unknown error'}`));
+        };
+
+        clearRequest.onsuccess = () => {
+          console.log('Successfully cleared existing transactions');
+          
+          // 새로운 데이터 일괄 추가
+          let addedCount = 0;
+          
+          transactions.forEach((transaction) => {
+            const newTransaction = {
+              ...transaction,
+              id: crypto.randomUUID(),
+              date: transaction.date,
+              amount: typeof transaction.amount === 'string' ? 
+                parseInt(transaction.amount.replace(/,/g, '')) : 
+                transaction.amount,
+              section: transaction.section.trim(),
+              category: transaction.category.trim(),
+              subcategory: transaction.subcategory?.trim() || '',
+              memo: transaction.memo?.trim() || ''
+            };
+
+            const addRequest = store.add(newTransaction);
+
+            addRequest.onsuccess = () => {
+              addedCount++;
+              if (addedCount === transactions.length) {
+                console.log(`Successfully imported ${addedCount} transactions`);
+                resolve();
+              }
+            };
+
+            addRequest.onerror = (event) => {
+              const error = (event.target as IDBRequest).error;
+              console.error('Failed to add transaction during import:', error?.message || event);
+              reject(new Error(`Failed to add transaction during import: ${error?.message || 'Unknown error'}`));
+            };
+          });
+        };
+
+        transaction.onerror = (event) => {
+          const error = (event.target as IDBTransaction).error;
+          console.error('Transaction failed:', error?.message || event);
+          reject(new Error(`Transaction failed: ${error?.message || 'Unknown error'}`));
+        };
+      });
+    } catch (error) {
+      console.error('Error during transactions replacement:', error);
       throw error;
     }
   }
