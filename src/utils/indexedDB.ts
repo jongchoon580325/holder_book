@@ -518,7 +518,7 @@ class TransactionDB {
     }
   }
 
-  async addTransaction(transaction: Transaction): Promise<void> {
+  async addTransaction(transactionData: Transaction): Promise<void> {
     try {
       await this.ensureConnection();
       
@@ -528,11 +528,31 @@ class TransactionDB {
 
       return new Promise((resolve, reject) => {
         try {
-          const transaction = this.db!.transaction([this.storeName], 'readwrite');
-          const store = transaction.objectStore(this.storeName);
-          const request = store.add(transaction);
+          // amount를 숫자로 변환
+          const amount = typeof transactionData.amount === 'string' 
+            ? parseInt(transactionData.amount.replace(/[^0-9.-]/g, ''), 10) || 0
+            : transactionData.amount || 0;
 
-          request.onsuccess = () => resolve();
+          // 순수 데이터 객체 생성
+          const cleanTransaction: Transaction = {
+            id: transactionData.id || crypto.randomUUID(),
+            type: transactionData.type,
+            date: transactionData.date,
+            section: transactionData.section.trim(),
+            category: transactionData.category.trim(),
+            subcategory: transactionData.subcategory?.trim() || '',
+            amount,
+            memo: transactionData.memo?.trim() || ''
+          };
+
+          const dbTransaction = this.db!.transaction([this.storeName], 'readwrite');
+          const store = dbTransaction.objectStore(this.storeName);
+          const request = store.add(cleanTransaction);
+
+          request.onsuccess = () => {
+            console.log('Transaction added successfully:', cleanTransaction.id);
+            resolve();
+          };
           
           request.onerror = (event) => {
             const error = (event.target as IDBRequest).error;
@@ -540,7 +560,7 @@ class TransactionDB {
             reject(new Error(`Failed to add transaction: ${error?.message || 'Unknown error'}`));
           };
           
-          transaction.onerror = (event) => {
+          dbTransaction.onerror = (event) => {
             const error = (event.target as IDBTransaction).error;
             console.error('Transaction failed:', error?.message || event);
             reject(new Error(`Transaction failed: ${error?.message || 'Unknown error'}`));

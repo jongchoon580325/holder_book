@@ -6,7 +6,7 @@ export interface Transaction {
   category: string;
   subcategory?: string;
   item?: string;
-  amount: number;
+  amount: number | string;
   memo?: string;
 }
 

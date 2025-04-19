@@ -13,12 +13,6 @@ export default function TransactionInput() {
   const [isClient, setIsClient] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // 클라이언트 사이드 렌더링 확인
-  useEffect(() => {
-    setIsClient(true);
-    loadTransactions();
-  }, []);
-
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -33,6 +27,23 @@ export default function TransactionInput() {
       showToast('거래내역을 불러오는데 실패했습니다.', 'error');
     }
   };
+
+  // 컴포넌트 마운트 시 초기화 및 이벤트 리스너 등록
+  useEffect(() => {
+    setIsClient(true);
+    loadTransactions();
+
+    // transactionUpdate 이벤트 리스너 등록
+    const handleTransactionUpdate = () => {
+      loadTransactions();
+    };
+    window.addEventListener('transactionUpdate', handleTransactionUpdate);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener('transactionUpdate', handleTransactionUpdate);
+    };
+  }, []);
 
   const handleSaveTransaction = async (transaction: NewTransaction) => {
     try {
