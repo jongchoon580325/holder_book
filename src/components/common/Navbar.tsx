@@ -2,11 +2,19 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 export default function Navbar() {
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const getLinkClassName = (path: string) => {
+    if (!mounted) return '';
+    
     const isActive = pathname === path;
     return `text-lg font-medium relative
       ${isActive ? 'text-orange-500' : 'text-[#41416e]/80'} 
@@ -41,8 +49,8 @@ export default function Navbar() {
               거래통계
             </Link>
             <Link 
-              href="/transaction/settings" 
-              className={getLinkClassName('/transaction/settings')}
+              href="/settings" 
+              className={getLinkClassName('/settings')}
             >
               거래설정
             </Link>

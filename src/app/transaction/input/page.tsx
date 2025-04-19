@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import PageHeader from '@/components/common/PageHeader';
+import { PageHeader } from '@/components/common/PageHeader';
 import TransactionForm from '@/components/transaction/TransactionForm';
 import TransactionTable from '@/components/transaction/TransactionTable';
 import { Transaction, NewTransaction } from '@/types/transaction';
