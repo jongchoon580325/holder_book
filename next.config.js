@@ -5,16 +5,7 @@ const nextConfig = {
   experimental: {
     appDir: true
   },
-  // Fast Refresh 설정
-  webpackDevMiddleware: config => {
-    config.watchOptions = {
-      poll: 1000,
-      aggregateTimeout: 300,
-      ignored: ['**/.git/**', '**/node_modules/**', '**/.next/**']
-    }
-    return config
-  },
-  // 개발 서버 안정성 설정
+  // 웹팩 설정
   webpack: (config, { dev, isServer }) => {
     if (!isServer && dev) {
       // 클라이언트 사이드 개발 설정

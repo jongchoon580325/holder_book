@@ -1,36 +1,30 @@
-import { Transition } from '@headlessui/react';
-import { Fragment } from 'react';
+'use client';
+
+import { useEffect } from 'react';
 
 interface ToastProps {
-  show: boolean;
   message: string;
+  type?: 'success' | 'error';
+  onClose: () => void;
 }
 
-export function Toast({ show, message }: ToastProps) {
+export default function Toast({ message, type = 'success', onClose }: ToastProps) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const baseStyles = "fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-y-0";
+  const typeStyles = type === 'success' 
+    ? "bg-green-500 text-white"
+    : "bg-red-500 text-white";
+
   return (
-    <div className="fixed bottom-4 right-4">
-      <Transition
-        show={show}
-        as={Fragment}
-        enter="transform ease-out duration-300 transition"
-        enterFrom="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
-        enterTo="translate-y-0 opacity-100 sm:translate-x-0"
-        leave="transition ease-in duration-100"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-      >
-        <div className="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden">
-          <div className="p-4">
-            <div className="flex items-center">
-              <div className="ml-3 w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900">
-                  {message}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
+    <div className={`${baseStyles} ${typeStyles}`}>
+      {message}
     </div>
   );
 } 
