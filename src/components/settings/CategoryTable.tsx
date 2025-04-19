@@ -5,11 +5,194 @@ import { Category, CategoryType } from '@/types/category';
 import { categoryDB } from '@/utils/indexedDB';
 import ConfirmModal from '../common/ConfirmModal';
 import Toast from '../common/Toast';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CategoryTableProps {
   type: CategoryType;
   categories: Category[];
   onUpdate: () => void;
+}
+
+interface SortableRowProps {
+  id: string;
+  category: Category;
+  index: number;
+  startIndex: number;
+  editingId: string | null;
+  formData: { section: string; category: string; subcategory: string };
+  buttonClassName: any;
+  inputClassName: string;
+  type: CategoryType;
+  onEdit: (category: Category) => void;
+  onSave: (id: string) => void;
+  onDelete: (id: string) => void;
+  setEditingId: (id: string | null) => void;
+  setFormData: (data: any) => void;
+  moveCategory: (index: number, direction: 'up' | 'down') => void;
+  totalLength: number;
+}
+
+function SortableRow({
+  id,
+  category,
+  index,
+  startIndex,
+  editingId,
+  formData,
+  buttonClassName,
+  inputClassName,
+  type,
+  onEdit,
+  onSave,
+  onDelete,
+  setEditingId,
+  setFormData,
+  moveCategory,
+  totalLength,
+}: SortableRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`hover:bg-gray-700/50 transition-colors ${
+        isDragging ? 'bg-gray-600' : ''
+      }`}
+    >
+      <td
+        className="px-6 py-4 whitespace-nowrap text-lg text-gray-300 cursor-move"
+        {...attributes}
+        {...listeners}
+      >
+        <div className="flex items-center justify-center">
+          <div className="flex flex-col space-y-1">
+            <button
+              onClick={() => moveCategory(index, 'up')}
+              disabled={startIndex + index === 0}
+              className={`text-gray-400 hover:text-gray-200 ${
+                startIndex + index === 0 ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              ▲
+            </button>
+            <button
+              onClick={() => moveCategory(index, 'down')}
+              disabled={startIndex + index === totalLength - 1}
+              className={`text-gray-400 hover:text-gray-200 ${
+                startIndex + index === totalLength - 1
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              }`}
+            >
+              ▼
+            </button>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-300">
+        {type === 'income' ? '수입' : '지출'}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-300">
+        {editingId === category.id ? (
+          <input
+            type="text"
+            className={inputClassName}
+            value={formData.section}
+            onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+          />
+        ) : (
+          category.section
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-300">
+        {editingId === category.id ? (
+          <input
+            type="text"
+            className={inputClassName}
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          />
+        ) : (
+          category.category
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-300">
+        {editingId === category.id ? (
+          <input
+            type="text"
+            className={inputClassName}
+            value={formData.subcategory}
+            onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+          />
+        ) : (
+          category.subcategory
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-lg font-medium space-x-4">
+        {editingId === category.id ? (
+          <>
+            <button
+              onClick={() => onSave(category.id)}
+              className={buttonClassName.save}
+            >
+              저장
+            </button>
+            <button
+              onClick={() => setEditingId(null)}
+              className={buttonClassName.cancel}
+            >
+              취소
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => onEdit(category)}
+              className={buttonClassName.edit}
+            >
+              수정
+            </button>
+            <button
+              onClick={() => onDelete(category.id)}
+              className={buttonClassName.delete}
+            >
+              삭제
+            </button>
+          </>
+        )}
+      </td>
+    </tr>
+  );
 }
 
 export default function CategoryTable({ type, categories, onUpdate }: CategoryTableProps) {
@@ -25,12 +208,24 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
 
   const pageOptions = [10, 20, 30];
-  const totalPages = Math.ceil(categories.length / itemsPerPage);
+  const totalPages = Math.ceil(localCategories.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentCategories = categories.slice(startIndex, endIndex);
+  const currentCategories = localCategories.slice(startIndex, endIndex);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     if (toast) {
@@ -68,7 +263,7 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
   };
 
   const isDuplicate = (newCategory: Omit<Category, 'id'>) => {
-    return categories.some(
+    return localCategories.some(
       (cat) =>
         cat.type === newCategory.type &&
         cat.section.trim() === newCategory.section.trim() &&
@@ -179,6 +374,93 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
     setCurrentPage(1); // 페이지 크기가 변경되면 첫 페이지로 이동
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = localCategories.findIndex((item) => item.id === active.id);
+    const newIndex = localCategories.findIndex((item) => item.id === over.id);
+    
+    const newItems = arrayMove(localCategories, oldIndex, newIndex);
+    setLocalCategories(newItems);
+
+    try {
+      await Promise.all(
+        newItems.map((item, index) =>
+          categoryDB.updateCategory({ ...item, order: index })
+        )
+      );
+      showToast('카테고리 순서가 변경되었습니다.', 'success');
+      await onUpdate();
+    } catch (error) {
+      console.error('순서 변경 실패:', error);
+      showToast('순서 변경에 실패했습니다.', 'error');
+      setLocalCategories(categories);
+    }
+  };
+
+  const moveCategory = async (index: number, direction: 'up' | 'down') => {
+    const currentIndex = startIndex + index;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+    // 범위 체크
+    if (
+      (direction === 'up' && currentIndex === 0) ||
+      (direction === 'down' && currentIndex === localCategories.length - 1)
+    ) {
+      return;
+    }
+
+    try {
+      // 현재 카테고리와 대상 카테고리
+      const currentCategory = localCategories[currentIndex];
+      const targetCategory = localCategories[targetIndex];
+
+      if (!currentCategory || !targetCategory) {
+        console.error('카테고리를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 순서 업데이트를 위한 새 배열 생성
+      const updatedCategories = [...localCategories];
+      [updatedCategories[currentIndex], updatedCategories[targetIndex]] = 
+        [updatedCategories[targetIndex], updatedCategories[currentIndex]];
+
+      // 상태 업데이트
+      setLocalCategories(updatedCategories);
+
+      // DB 업데이트
+      const currentOrder = currentCategory.order ?? currentIndex;
+      const targetOrder = targetCategory.order ?? targetIndex;
+
+      await Promise.all([
+        categoryDB.updateCategory({
+          ...currentCategory,
+          order: targetOrder
+        }),
+        categoryDB.updateCategory({
+          ...targetCategory,
+          order: currentOrder
+        })
+      ]);
+
+      // 성공 메시지 표시
+      showToast('카테고리 순서가 변경되었습니다.', 'success');
+
+      // 부모 컴포넌트에 업데이트 알림
+      await onUpdate();
+    } catch (error) {
+      console.error('순서 변경 실패:', error);
+      showToast('순서 변경에 실패했습니다.', 'error');
+      
+      // 실패 시 원래 상태로 복구
+      setLocalCategories(categories);
+    }
+  };
+
   return (
     <div className="mt-4">
       <div className="mb-4 bg-gray-700/30 rounded-lg p-4">
@@ -243,97 +525,54 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
         </form>
       </div>
 
-      <div className="overflow-x-auto rounded-lg shadow">
-        <table className="min-w-full divide-y divide-gray-700">
-          <thead className="bg-gray-700">
-            <tr>
-              <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">유형</th>
-              <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">관</th>
-              <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">항</th>
-              <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">목</th>
-              <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">관리</th>
-            </tr>
-          </thead>
-          <tbody className="bg-gray-800 divide-y divide-gray-700">
-            {currentCategories.map((category) => (
-              <tr key={category.id} className="hover:bg-gray-700/50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-300">
-                  {type === 'income' ? '수입' : '지출'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-300">
-                  {editingId === category.id ? (
-                    <input
-                      type="text"
-                      className={inputClassName}
-                      value={formData.section}
-                      onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                    />
-                  ) : (
-                    category.section
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-300">
-                  {editingId === category.id ? (
-                    <input
-                      type="text"
-                      className={inputClassName}
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    />
-                  ) : (
-                    category.category
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-300">
-                  {editingId === category.id ? (
-                    <input
-                      type="text"
-                      className={inputClassName}
-                      value={formData.subcategory}
-                      onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-                    />
-                  ) : (
-                    category.subcategory
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-lg font-medium space-x-4">
-                  {editingId === category.id ? (
-                    <>
-                      <button
-                        onClick={() => handleSave(category.id)}
-                        className={buttonClassName.save}
-                      >
-                        저장
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className={buttonClassName.cancel}
-                      >
-                        취소
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleEdit(category)}
-                        className={buttonClassName.edit}
-                      >
-                        수정
-                      </button>
-                      <button
-                        onClick={() => handleDelete(category.id)}
-                        className={buttonClassName.delete}
-                      >
-                        삭제
-                      </button>
-                    </>
-                  )}
-                </td>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="overflow-x-auto rounded-lg shadow">
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-gray-700">
+              <tr>
+                <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">순서</th>
+                <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">유형</th>
+                <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">관</th>
+                <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">항</th>
+                <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">목</th>
+                <th className="px-6 py-4 text-left text-lg font-medium text-gray-200 uppercase tracking-wider">관리</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="bg-gray-800 divide-y divide-gray-700">
+              <SortableContext
+                items={currentCategories.map(item => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {currentCategories.map((category, index) => (
+                  <SortableRow
+                    key={category.id}
+                    id={category.id}
+                    category={category}
+                    index={index}
+                    startIndex={startIndex}
+                    editingId={editingId}
+                    formData={formData}
+                    buttonClassName={buttonClassName}
+                    inputClassName={inputClassName}
+                    type={type}
+                    onEdit={handleEdit}
+                    onSave={handleSave}
+                    onDelete={handleDelete}
+                    setEditingId={setEditingId}
+                    setFormData={setFormData}
+                    moveCategory={moveCategory}
+                    totalLength={localCategories.length}
+                  />
+                ))}
+              </SortableContext>
+            </tbody>
+          </table>
+        </div>
+      </DndContext>
 
       {/* Pagination Controls */}
       <div className="mt-4 flex items-center justify-between bg-gray-700/30 rounded-lg p-4">
@@ -405,7 +644,7 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
         </div>
 
         <div className="text-gray-300">
-          총 {categories.length}개 항목
+          총 {localCategories.length}개 항목
         </div>
       </div>
 

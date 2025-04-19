@@ -1,94 +1,65 @@
 import { Category } from '@/types/category';
 
-const DB_NAME = 'moneyBookDB';
-const DB_VERSION = 3;
-const CATEGORY_STORE = 'categories';
-
-export class CategoryDB {
+class CategoryDB {
   private db: IDBDatabase | null = null;
+  private readonly dbName = 'moneyBookDB';
+  private readonly storeName = 'categories';
+  private readonly version = 4; // 버전 업데이트
 
-  async init() {
-    if (this.db) return;
+  async connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.version);
 
-    return new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => {
+        reject(new Error('DB 연결 실패'));
+      };
 
-      request.onerror = () => reject(request.error);
-
-      request.onsuccess = () => {
-        this.db = request.result;
+      request.onsuccess = (event) => {
+        this.db = (event.target as IDBOpenDBRequest).result;
         resolve();
       };
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         
-        if (db.objectStoreNames.contains(CATEGORY_STORE)) {
-          db.deleteObjectStore(CATEGORY_STORE);
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
+          store.createIndex('type', 'type', { unique: false });
+          store.createIndex('order', 'order', { unique: false }); // 순서 인덱스 추가
+        } else {
+          const store = event.target?.transaction?.objectStore(this.storeName);
+          if (store && !store.indexNames.contains('order')) {
+            store.createIndex('order', 'order', { unique: false });
+          }
         }
-
-        const store = db.createObjectStore(CATEGORY_STORE, { 
-          keyPath: 'id',
-          autoIncrement: false
-        });
-
-        store.createIndex('uniqueComposite', 
-          ['type', 'section', 'category', 'subcategory'], 
-          { unique: true }
-        );
       };
     });
   }
 
-  async addCategory(category: Category): Promise<string> {
-    await this.init();
-
+  async addCategory(category: Category): Promise<void> {
+    await this.ensureConnection();
     return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction([CATEGORY_STORE], 'readwrite');
-        const store = transaction.objectStore(CATEGORY_STORE);
-        
-        const index = store.index('uniqueComposite');
-        const checkRequest = index.get([
-          category.type,
-          category.section.trim(),
-          category.category.trim(),
-          category.subcategory.trim()
-        ]);
+      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      const store = transaction.objectStore(this.storeName);
 
-        checkRequest.onsuccess = () => {
-          if (checkRequest.result) {
-            reject(new Error('이미 존재하는 카테고리입니다.'));
-            return;
-          }
+      // 현재 최대 order 값을 찾아서 새 카테고리의 order를 설정
+      const countRequest = store.count();
+      countRequest.onsuccess = () => {
+        const newCategory = { ...category, order: countRequest.result };
+        const request = store.add(newCategory);
 
-          const newCategory = {
-            ...category,
-            id: crypto.randomUUID(),
-            section: category.section.trim(),
-            category: category.category.trim(),
-            subcategory: category.subcategory.trim()
-          };
-
-          const addRequest = store.add(newCategory);
-          
-          addRequest.onsuccess = () => resolve(newCategory.id);
-          addRequest.onerror = () => reject(new Error('카테고리 추가 실패'));
-        };
-
-        checkRequest.onerror = () => reject(new Error('중복 체크 실패'));
-      } catch (error) {
-        reject(error);
-      }
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(new Error('카테고리 추가 실패'));
+      };
     });
   }
 
   async updateCategory(category: Category): Promise<void> {
-    await this.init();
+    await this.ensureConnection();
     return new Promise((resolve, reject) => {
       try {
-        const transaction = this.db!.transaction([CATEGORY_STORE], 'readwrite');
-        const store = transaction.objectStore(CATEGORY_STORE);
+        const transaction = this.db!.transaction([this.storeName], 'readwrite');
+        const store = transaction.objectStore(this.storeName);
         
         const updatedCategory = {
           ...category,
@@ -107,11 +78,11 @@ export class CategoryDB {
   }
 
   async deleteCategory(id: string): Promise<void> {
-    await this.init();
+    await this.ensureConnection();
     return new Promise((resolve, reject) => {
       try {
-        const transaction = this.db!.transaction([CATEGORY_STORE], 'readwrite');
-        const store = transaction.objectStore(CATEGORY_STORE);
+        const transaction = this.db!.transaction([this.storeName], 'readwrite');
+        const store = transaction.objectStore(this.storeName);
         const request = store.delete(id);
 
         request.onsuccess = () => resolve();
@@ -123,19 +94,26 @@ export class CategoryDB {
   }
 
   async getAllCategories(): Promise<Category[]> {
-    await this.init();
+    await this.ensureConnection();
     return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction([CATEGORY_STORE], 'readonly');
-        const store = transaction.objectStore(CATEGORY_STORE);
-        const request = store.getAll();
+      const transaction = this.db!.transaction([this.storeName], 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.index('order').getAll(); // order 인덱스로 정렬하여 가져오기
 
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(new Error('카테고리 목록 조회 실패'));
-      } catch (error) {
-        reject(error);
-      }
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+
+      request.onerror = () => {
+        reject(new Error('카테고리 목록 조회 실패'));
+      };
     });
+  }
+
+  private async ensureConnection(): Promise<void> {
+    if (!this.db) {
+      await this.connect();
+    }
   }
 }
 
