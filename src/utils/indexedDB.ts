@@ -19,17 +19,20 @@ class CategoryDB {
         resolve();
       };
 
-      request.onupgradeneeded = (event) => {
+      request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         const db = (event.target as IDBOpenDBRequest).result;
         
         if (!db.objectStoreNames.contains(this.storeName)) {
           const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
           store.createIndex('type', 'type', { unique: false });
-          store.createIndex('order', 'order', { unique: false }); // 순서 인덱스 추가
+          store.createIndex('order', 'order', { unique: false });
         } else {
-          const store = event.target?.transaction?.objectStore(this.storeName);
-          if (store && !store.indexNames.contains('order')) {
-            store.createIndex('order', 'order', { unique: false });
+          const transaction = (event.target as IDBOpenDBRequest).transaction;
+          if (transaction) {
+            const store = transaction.objectStore(this.storeName);
+            if (!store.indexNames.contains('order')) {
+              store.createIndex('order', 'order', { unique: false });
+            }
           }
         }
       };
@@ -114,6 +117,39 @@ class CategoryDB {
     if (!this.db) {
       await this.connect();
     }
+  }
+
+  private async initDB(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, 1);
+
+      request.onerror = (event) => {
+        console.error('DB 초기화 실패:', event);
+        reject(event);
+      };
+
+      request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
+          store.createIndex('type', 'type', { unique: false });
+          store.createIndex('order', 'order', { unique: false });
+        } else {
+          const transaction = (event.target as IDBOpenDBRequest).transaction;
+          if (transaction) {
+            const store = transaction.objectStore(this.storeName);
+            if (!store.indexNames.contains('order')) {
+              store.createIndex('order', 'order', { unique: false });
+            }
+          }
+        }
+      };
+
+      request.onsuccess = (event) => {
+        this.db = (event.target as IDBOpenDBRequest).result;
+        resolve();
+      };
+    });
   }
 }
 
