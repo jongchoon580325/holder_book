@@ -2,15 +2,16 @@
 
 import { useState } from 'react';
 import { Transaction } from '@/types/transaction';
+import { DeleteConfirmModal } from '@/components/common/DeleteConfirmModal';
 
 interface TransactionTableProps {
   transactions: Transaction[];
-  onUpdate: (id: number, transaction: Transaction) => void;
-  onDelete: (id: number) => void;
+  onUpdate: (id: string, transaction: Transaction) => void;
+  onDelete: (id: string) => void;
 }
 
 export default function TransactionTable({ transactions, onUpdate, onDelete }: TransactionTableProps) {
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Transaction | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -100,6 +101,14 @@ export default function TransactionTable({ transactions, onUpdate, onDelete }: T
                   <td className="px-4 py-3">
                     <input
                       type="text"
+                      value={editingData?.section || ''}
+                      onChange={(e) => handleEditChange('section', e.target.value)}
+                      className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="text"
                       value={editingData?.category || ''}
                       onChange={(e) => handleEditChange('category', e.target.value)}
                       className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
@@ -110,14 +119,6 @@ export default function TransactionTable({ transactions, onUpdate, onDelete }: T
                       type="text"
                       value={editingData?.subcategory || ''}
                       onChange={(e) => handleEditChange('subcategory', e.target.value)}
-                      className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="text"
-                      value={editingData?.item || ''}
-                      onChange={(e) => handleEditChange('item', e.target.value)}
                       className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
                     />
                   </td>
@@ -163,9 +164,9 @@ export default function TransactionTable({ transactions, onUpdate, onDelete }: T
                       {transaction.type === 'income' ? '수입' : '지출'}
                     </span>
                   </td>
+                  <td className="px-4 py-3">{transaction.section}</td>
                   <td className="px-4 py-3">{transaction.category}</td>
                   <td className="px-4 py-3">{transaction.subcategory}</td>
-                  <td className="px-4 py-3">{transaction.item}</td>
                   <td className="px-4 py-3 text-right">
                     <span className={transaction.type === 'income' ? 'text-blue-400' : 'text-red-400'}>
                       {transaction.amount.toLocaleString()}원
@@ -197,26 +198,10 @@ export default function TransactionTable({ transactions, onUpdate, onDelete }: T
 
       {/* 삭제 확인 모달 */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4">거래 삭제 확인</h3>
-            <p className="mb-6">이 거래를 삭제하시겠습니까?</p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded"
-              >
-                취소
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteConfirmModal
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
       )}
     </div>
   );

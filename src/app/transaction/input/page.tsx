@@ -5,32 +5,71 @@ import { PageHeader } from '@/components/common/PageHeader';
 import TransactionForm from '@/components/transaction/TransactionForm';
 import TransactionTable from '@/components/transaction/TransactionTable';
 import { Transaction, NewTransaction } from '@/types/transaction';
+import { transactionDB } from '@/utils/indexedDB';
+import { Toast } from '@/components/common/Toast';
 
 export default function TransactionInput() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // 클라이언트 사이드 렌더링 확인
   useEffect(() => {
     setIsClient(true);
+    loadTransactions();
   }, []);
 
-  const handleSaveTransaction = (transaction: NewTransaction) => {
-    const newTransaction: Transaction = {
-      ...transaction,
-      id: Date.now()
-    };
-    setTransactions(prev => [...prev, newTransaction]);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
   };
 
-  const handleUpdateTransaction = (id: number, updatedTransaction: Transaction) => {
-    setTransactions(prev => 
-      prev.map(t => t.id === id ? { ...updatedTransaction, id } : t)
-    );
+  const loadTransactions = async () => {
+    try {
+      const allTransactions = await transactionDB.getAllTransactions();
+      setTransactions(allTransactions);
+    } catch (error) {
+      console.error('거래내역 로드 실패:', error);
+      showToast('거래내역을 불러오는데 실패했습니다.', 'error');
+    }
   };
 
-  const handleDeleteTransaction = (id: number) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+  const handleSaveTransaction = async (transaction: NewTransaction) => {
+    try {
+      const newTransaction: Transaction = {
+        ...transaction,
+        id: crypto.randomUUID()
+      };
+      
+      await transactionDB.addTransaction(newTransaction);
+      await loadTransactions(); // 거래내역 다시 로드
+      showToast('거래내역이 저장되었습니다.', 'success');
+    } catch (error) {
+      console.error('거래내역 저장 실패:', error);
+      showToast('거래내역 저장에 실패했습니다.', 'error');
+    }
+  };
+
+  const handleUpdateTransaction = async (id: string, updatedTransaction: Transaction) => {
+    try {
+      await transactionDB.updateTransaction(id, updatedTransaction);
+      await loadTransactions();
+      showToast('거래내역이 수정되었습니다.', 'success');
+    } catch (error) {
+      console.error('거래내역 수정 실패:', error);
+      showToast('거래내역 수정에 실패했습니다.', 'error');
+    }
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    try {
+      await transactionDB.deleteTransaction(id);
+      await loadTransactions();
+      showToast('거래내역이 삭제되었습니다.', 'success');
+    } catch (error) {
+      console.error('거래내역 삭제 실패:', error);
+      showToast('거래내역 삭제에 실패했습니다.', 'error');
+    }
   };
 
   // 클라이언트 사이드 렌더링 전에는 로딩 상태 표시
@@ -92,6 +131,17 @@ export default function TransactionInput() {
           />
         </section>
       </div>
+
+      {/* 토스트 메시지 */}
+      {toast && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        </div>
+      )}
     </main>
   );
 } 

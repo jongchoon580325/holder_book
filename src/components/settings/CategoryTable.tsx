@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Category, CategoryType } from '@/types/category';
 import { categoryDB } from '@/utils/indexedDB';
 import ConfirmModal from '../common/ConfirmModal';
-import Toast from '../common/Toast';
+import { Toast } from '../common/Toast';
 import {
   DndContext,
   closestCenter,

@@ -6,7 +6,7 @@ import { Category } from '@/types/category';
 import { categoryDB } from '@/utils/indexedDB';
 import CategoryTable from './CategoryTable';
 
-export default function CategoryTabs() {
+export const CategoryTabs = () => {
   const [categories, setCategories] = useState<Category[]>([]);
 
   const loadCategories = async () => {

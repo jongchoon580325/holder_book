@@ -12,9 +12,9 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: '',
+    section: '',
     category: '',
     subcategory: '',
-    item: '',
     memo: ''
   });
 
@@ -38,7 +38,7 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
     // 천단위 구분자 제거하고 숫자로 변환
     const amount = Number(formData.amount.replace(/,/g, ''));
     
-    if (!amount || !formData.category || !formData.subcategory || !formData.item) {
+    if (!amount || !formData.section || !formData.category || !formData.subcategory) {
       alert('필수 필드를 모두 입력해주세요.');
       return;
     }
@@ -47,9 +47,9 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
       amount,
       type,
       date: formData.date,
+      section: formData.section,
       category: formData.category,
       subcategory: formData.subcategory,
-      item: formData.item,
       memo: formData.memo
     });
 
@@ -57,9 +57,9 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
     setFormData({
       date: new Date().toISOString().split('T')[0],
       amount: '',
+      section: '',
       category: '',
       subcategory: '',
-      item: '',
       memo: ''
     });
   };
@@ -111,8 +111,8 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
           <label className="block text-sm font-medium mb-1">관</label>
           <input
             type="text"
-            name="category"
-            value={formData.category}
+            name="section"
+            value={formData.section}
             onChange={handleChange}
             className="w-full px-3 py-2 bg-white/10 rounded border border-white/20 focus:outline-none focus:border-white/40"
             placeholder="관 입력"
@@ -123,8 +123,8 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
           <label className="block text-sm font-medium mb-1">항</label>
           <input
             type="text"
-            name="subcategory"
-            value={formData.subcategory}
+            name="category"
+            value={formData.category}
             onChange={handleChange}
             className="w-full px-3 py-2 bg-white/10 rounded border border-white/20 focus:outline-none focus:border-white/40"
             placeholder="항 입력"
@@ -135,8 +135,8 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
           <label className="block text-sm font-medium mb-1">목</label>
           <input
             type="text"
-            name="item"
-            value={formData.item}
+            name="subcategory"
+            value={formData.subcategory}
             onChange={handleChange}
             className="w-full px-3 py-2 bg-white/10 rounded border border-white/20 focus:outline-none focus:border-white/40"
             placeholder="목 입력"
