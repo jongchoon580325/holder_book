@@ -51,16 +51,16 @@ export default function Home() {
           {/* Right Section - Features Grid */}
           <div className="col-span-12 lg:col-span-7">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-              {/* 지출 관리 */}
+              {/* 거래 관리 */}
               <Link href="/transaction/input" className="group flex">
                 <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700 hover:border-blue-500 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 w-full flex flex-col justify-between">
                   <div>
                     <div className="text-blue-500 mb-3 text-3xl group-hover:scale-110 transition-transform duration-300">
                       <FaWallet />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">지출 관리</h3>
+                    <h3 className="text-lg font-semibold mb-2">거래 관리</h3>
                   </div>
-                  <p className="text-gray-400 text-sm">일별, 월별 지출을 한눈에 관리하세요</p>
+                  <p className="text-gray-400 text-sm">일별, 월별 거래를 한눈에 관리하세요</p>
                 </div>
               </Link>
 
@@ -77,16 +77,16 @@ export default function Home() {
                 </div>
               </Link>
 
-              {/* 예산 계획 */}
+              {/* 데이터 관리 */}
               <Link href="/transaction/planning" className="group flex">
                 <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700 hover:border-blue-500 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 w-full flex flex-col justify-between">
                   <div>
                     <div className="text-blue-500 mb-3 text-3xl group-hover:scale-110 transition-transform duration-300">
                       <FaCalendarAlt />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">예산 계획</h3>
+                    <h3 className="text-lg font-semibold mb-2">데이터 관리</h3>
                   </div>
-                  <p className="text-gray-400 text-sm">미래 예산을 계획하고 관리하세요</p>
+                  <p className="text-gray-400 text-sm">거래 데이터를 효율적으로 관리하세요</p>
                 </div>
               </Link>
 
@@ -105,7 +105,14 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
+      <footer className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 py-3">
+        <div className="container mx-auto px-4">
+          <p className="text-sm text-gray-300 text-center whitespace-nowrap">
+            © 2024 Smart Holder - Your Personal Finance Partner | Built with ❤️ by Najongchoon | Contact: najongchoon@gmail.com
+          </p>
         </div>
-      </main>
+      </footer>
+    </main>
   );
 }
