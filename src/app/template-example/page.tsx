@@ -2,6 +2,7 @@
 
 import React from 'react';
 import EditablePageTemplate from '@/templates/pages/EditablePageTemplate';
+import Link from 'next/link';
 
 const TemplateExamplePage = () => {
   return (
@@ -13,10 +14,10 @@ const TemplateExamplePage = () => {
           <div className="container mx-auto px-4 py-3">
             <div className="flex justify-end">
               <div className="space-x-4">
-                <a href="#" className="text-gray-300 hover:text-white">Home</a>
-                <a href="#" className="text-gray-300 hover:text-white">Features</a>
-                <a href="#" className="text-gray-300 hover:text-white">About</a>
-                <a href="#" className="text-gray-300 hover:text-white">Contact</a>
+                <Link href="/transaction/input" className="text-gray-300 hover:text-white">거래관리</Link>
+                <Link href="#" className="text-gray-300 hover:text-white">통계분석</Link>
+                <Link href="#" className="text-gray-300 hover:text-white">데이터관리</Link>
+                <Link href="#" className="text-gray-300 hover:text-white">로그인</Link>
               </div>
             </div>
           </div>
