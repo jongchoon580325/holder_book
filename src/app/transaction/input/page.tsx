@@ -187,8 +187,8 @@ export default function TransactionInput() {
             <h2 className="text-2xl font-bold mb-6">거래목록현황</h2>
             <TransactionTable 
               transactions={transactions}
-              onUpdate={handleUpdateTransaction}
               onDelete={handleDeleteTransaction}
+              onUpdate={handleUpdateTransaction}
             />
           </section>
         </div>

@@ -576,7 +576,7 @@ class TransactionDB {
     }
   }
 
-  async updateTransaction(id: string, transaction: Transaction): Promise<void> {
+  async updateTransaction(id: string, transactionData: Transaction): Promise<void> {
     try {
       await this.ensureConnection();
       
@@ -585,21 +585,49 @@ class TransactionDB {
       }
 
       return new Promise((resolve, reject) => {
-        const transaction = this.db!.transaction([this.storeName], 'readwrite');
-        const store = transaction.objectStore(this.storeName);
+        try {
+          const dbTransaction = this.db!.transaction([this.storeName], 'readwrite');
+          const store = dbTransaction.objectStore(this.storeName);
 
-        const request = store.put({ ...transaction, id });
+          // amount를 숫자로 변환
+          const amount = typeof transactionData.amount === 'string' 
+            ? parseInt(transactionData.amount.replace(/[^0-9.-]/g, ''), 10) 
+            : transactionData.amount || 0;
 
-        request.onsuccess = () => {
-          console.log('Transaction updated successfully:', id);
-          resolve();
-        };
+          // 순수 데이터 객체 생성
+          const cleanTransaction: Transaction = {
+            id,
+            type: transactionData.type,
+            date: transactionData.date,
+            section: transactionData.section.trim(),
+            category: transactionData.category.trim(),
+            subcategory: transactionData.subcategory?.trim() || '',
+            amount,
+            memo: transactionData.memo?.trim() || ''
+          };
 
-        request.onerror = (event) => {
-          const error = (event.target as IDBRequest).error;
-          console.error('Failed to update transaction:', error?.message || event);
-          reject(new Error(`Failed to update transaction: ${error?.message || 'Unknown error'}`));
-        };
+          const request = store.put(cleanTransaction);
+
+          request.onsuccess = () => {
+            console.log('Transaction updated successfully:', id);
+            resolve();
+          };
+
+          request.onerror = (event) => {
+            const error = (event.target as IDBRequest).error;
+            console.error('Failed to update transaction:', error?.message || event);
+            reject(new Error(`Failed to update transaction: ${error?.message || 'Unknown error'}`));
+          };
+
+          dbTransaction.onerror = (event) => {
+            const error = (event.target as IDBTransaction).error;
+            console.error('Transaction failed:', error?.message || event);
+            reject(new Error(`Transaction failed: ${error?.message || 'Unknown error'}`));
+          };
+        } catch (error) {
+          console.error('Error during transaction update:', error);
+          reject(error);
+        }
       });
     } catch (error) {
       console.error('Error during transaction update:', error);

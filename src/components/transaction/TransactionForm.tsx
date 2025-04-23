@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NewTransaction } from '@/types/transaction';
+import { Category } from '@/types/category';
+import { categoryDB } from '@/utils/indexedDB';
 
 interface TransactionFormProps {
   type: 'income' | 'expense';
@@ -18,7 +20,58 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
     memo: ''
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 카테고리 상태 관리
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [sections, setSections] = useState<string[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [subcategoryOptions, setSubcategoryOptions] = useState<string[]>([]);
+
+  // 카테고리 데이터 로드
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const allCategories = await categoryDB.getAllCategories();
+        const typeCategories = allCategories.filter(cat => cat.type === type);
+        setCategories(typeCategories);
+        
+        // 관(section) 목록 추출
+        const uniqueSections = Array.from(new Set(typeCategories.map(cat => cat.section)));
+        setSections(uniqueSections);
+      } catch (error) {
+        console.error('카테고리 로드 실패:', error);
+      }
+    };
+    
+    loadCategories();
+  }, [type]);
+
+  // 선택된 관(section)에 따른 항(category) 목록 업데이트
+  useEffect(() => {
+    if (formData.section) {
+      const filteredCategories = categories.filter(cat => cat.section === formData.section);
+      const uniqueCategories = Array.from(new Set(filteredCategories.map(cat => cat.category)));
+      setCategoryOptions(uniqueCategories);
+      setFormData(prev => ({ ...prev, category: '', subcategory: '' }));
+    } else {
+      setCategoryOptions([]);
+    }
+  }, [formData.section, categories]);
+
+  // 선택된 항(category)에 따른 목(subcategory) 목록 업데이트
+  useEffect(() => {
+    if (formData.section && formData.category) {
+      const filteredSubcategories = categories.filter(
+        cat => cat.section === formData.section && cat.category === formData.category
+      );
+      const uniqueSubcategories = Array.from(new Set(filteredSubcategories.map(cat => cat.subcategory)));
+      setSubcategoryOptions(uniqueSubcategories);
+      setFormData(prev => ({ ...prev, subcategory: '' }));
+    } else {
+      setSubcategoryOptions([]);
+    }
+  }, [formData.section, formData.category, categories]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
     if (name === 'amount') {
@@ -109,39 +162,50 @@ export default function TransactionForm({ type, onSave }: TransactionFormProps) 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">관</label>
-          <input
-            type="text"
+          <select
             name="section"
             value={formData.section}
             onChange={handleChange}
             className="w-full px-3 py-2 bg-white/10 rounded border border-white/20 focus:outline-none focus:border-white/40"
-            placeholder="관 입력"
             required
-          />
+          >
+            <option value="">선택하세요</option>
+            {sections.map(section => (
+              <option key={section} value={section}>{section}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">항</label>
-          <input
-            type="text"
+          <select
             name="category"
             value={formData.category}
             onChange={handleChange}
             className="w-full px-3 py-2 bg-white/10 rounded border border-white/20 focus:outline-none focus:border-white/40"
-            placeholder="항 입력"
             required
-          />
+            disabled={!formData.section}
+          >
+            <option value="">선택하세요</option>
+            {categoryOptions.map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">목</label>
-          <input
-            type="text"
+          <select
             name="subcategory"
             value={formData.subcategory}
             onChange={handleChange}
             className="w-full px-3 py-2 bg-white/10 rounded border border-white/20 focus:outline-none focus:border-white/40"
-            placeholder="목 입력"
             required
-          />
+            disabled={!formData.category}
+          >
+            <option value="">선택하세요</option>
+            {subcategoryOptions.map(subcategory => (
+              <option key={subcategory} value={subcategory}>{subcategory}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">메모</label>

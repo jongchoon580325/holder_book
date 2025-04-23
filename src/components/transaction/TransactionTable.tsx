@@ -3,99 +3,74 @@
 import { useState, useMemo } from 'react';
 import { Transaction } from '@/types/transaction';
 import { DeleteConfirmModal } from '@/components/common/DeleteConfirmModal';
+import DailyAmountTooltip from './DailyAmountTooltip';
 
 interface TransactionTableProps {
   transactions: Transaction[];
-  onUpdate: (id: string, transaction: Transaction) => void;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, transaction: Transaction) => Promise<void>;
 }
 
-interface DailyTotal {
-  income: number;
-  expense: number;
-  balance: number;
-}
-
-export default function TransactionTable({ transactions, onUpdate, onDelete }: TransactionTableProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingData, setEditingData] = useState<Transaction | null>(null);
+export default function TransactionTable({ transactions, onDelete, onUpdate }: TransactionTableProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
-  // 날짜별로 거래 데이터 그룹화 및 정렬
-  const groupedTransactions = useMemo(() => {
-    const groups = transactions.reduce((acc, transaction) => {
-      const date = transaction.date;
-      if (!acc[date]) {
-        acc[date] = [];
+  // 날짜별 거래 데이터 계산
+  const dailyTransactions = useMemo(() => {
+    const dailyData = new Map<string, { income: number; expense: number; firstIndex: number }>();
+    
+    transactions.forEach((transaction, index) => {
+      const current = dailyData.get(transaction.date) || { 
+        income: 0, 
+        expense: 0, 
+        firstIndex: index 
+      };
+      
+      const amount = Number(transaction.amount);
+      
+      if (transaction.type === 'income') {
+        current.income += amount;
+      } else {
+        current.expense += amount;
       }
-      acc[date].push(transaction);
-      return acc;
-    }, {} as Record<string, Transaction[]>);
-
-    // 날짜별 정렬 (최신순)
-    return Object.entries(groups)
-      .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
-      .map(([date, transactions]) => ({
-        date,
-        transactions: transactions.sort((a, b) => {
-          const amountA = typeof a.amount === 'string' ? parseInt(a.amount) : a.amount;
-          const amountB = typeof b.amount === 'string' ? parseInt(b.amount) : b.amount;
-          return amountB - amountA;
-        }), // 금액 높은 순
-        totals: transactions.reduce(
-          (acc, curr) => {
-            const amount = typeof curr.amount === 'string' ? parseInt(curr.amount) : curr.amount;
-            if (curr.type === 'income') {
-              acc.income += amount;
-            } else {
-              acc.expense += amount;
-            }
-            acc.balance = acc.income - acc.expense;
-            return acc;
-          },
-          { income: 0, expense: 0, balance: 0 } as DailyTotal
-        ),
-      }));
+      
+      if (!dailyData.has(transaction.date)) {
+        current.firstIndex = index;
+      }
+      
+      dailyData.set(transaction.date, current);
+    });
+    
+    return dailyData;
   }, [transactions]);
 
   // 페이지네이션 계산
-  const totalPages = Math.ceil(groupedTransactions.length / itemsPerPage);
-  const paginatedGroups = groupedTransactions.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = Math.ceil(transactions.length / itemsPerPage);
+  const paginatedTransactions = transactions
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const handleEdit = (transaction: Transaction) => {
-    setEditingId(transaction.id);
-    setEditingData({ ...transaction });
-  };
+  // 현재 페이지에서 각 날짜의 첫 번째 인덱스 계산
+  const pageFirstIndices = useMemo(() => {
+    const indices = new Set<number>();
+    paginatedTransactions.forEach((transaction, index) => {
+      const dailyData = dailyTransactions.get(transaction.date);
+      if (dailyData && dailyData.firstIndex === transactions.indexOf(transaction)) {
+        indices.add(index);
+      }
+    });
+    return indices;
+  }, [paginatedTransactions, dailyTransactions, transactions]);
 
-  const handleEditChange = (field: keyof Transaction, value: string) => {
-    if (!editingData) return;
-
-    if (field === 'amount') {
-      // 숫자만 추출하고 천단위 구분자 추가
-      const numericValue = value.replace(/[^0-9]/g, '');
-      const amount = numericValue ? parseInt(numericValue) : 0;
-      setEditingData({ ...editingData, amount });
-    } else {
-      setEditingData({ ...editingData, [field]: value });
-    }
-  };
-
-  const handleEditSave = () => {
-    if (!editingData || !editingId) return;
-    onUpdate(editingId, editingData);
-    setEditingId(null);
-    setEditingData(null);
-  };
-
-  const handleEditCancel = () => {
-    setEditingId(null);
-    setEditingData(null);
+  // 행의 위치에 따른 툴팁 위치 결정
+  const getTooltipPosition = (index: number): 'top' | 'middle' | 'bottom' => {
+    if (index === 0) return 'top';
+    if (index === paginatedTransactions.length - 1) return 'bottom';
+    return 'middle';
   };
 
   const handleDelete = (transaction: Transaction) => {
@@ -109,6 +84,91 @@ export default function TransactionTable({ transactions, onUpdate, onDelete }: T
       setShowDeleteModal(false);
       setSelectedTransaction(null);
     }
+  };
+
+  const handleEdit = (transaction: Transaction) => {
+    // 깊은 복사를 통해 원본 데이터의 참조를 끊습니다
+    setEditingTransaction(JSON.parse(JSON.stringify(transaction)));
+  };
+
+  const handleEditChange = (field: keyof Transaction, value: string | number) => {
+    if (!editingTransaction) return;
+
+    setEditingTransaction(prev => {
+      if (!prev) return null;
+
+      const updated = { ...prev };
+
+      switch (field) {
+        case 'amount':
+          // 숫자와 쉼표만 남기고 제거
+          const numericValue = value.toString().replace(/[^0-9,]/g, '');
+          // 쉼표 제거 후 숫자로 변환
+          const numberValue = Number(numericValue.replace(/,/g, ''));
+          updated.amount = isNaN(numberValue) ? 0 : numberValue;
+          break;
+        case 'type':
+          updated.type = value as 'income' | 'expense';
+          break;
+        case 'date':
+        case 'section':
+        case 'category':
+        case 'subcategory':
+        case 'memo':
+          updated[field] = value.toString();
+          break;
+        case 'id':
+          // id는 수정하지 않음
+          break;
+      }
+
+      return updated;
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingTransaction) return;
+
+    try {
+      // 필수 필드 검증
+      const requiredFields: (keyof Transaction)[] = ['date', 'type', 'section', 'category', 'subcategory', 'amount'];
+      const missingFields = requiredFields.filter(field => !editingTransaction[field]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`다음 필드를 입력해주세요: ${missingFields.join(', ')}`);
+      }
+
+      // 금액이 유효한 숫자인지 확인
+      if (typeof editingTransaction.amount !== 'number' || isNaN(editingTransaction.amount)) {
+        throw new Error('유효하지 않은 금액입니다.');
+      }
+
+      // 원본 트랜잭션 찾기
+      const originalTransaction = transactions.find(t => t.id === editingTransaction.id);
+      if (!originalTransaction) {
+        throw new Error('수정할 거래를 찾을 수 없습니다.');
+      }
+
+      // 업데이트할 데이터 준비
+      const updateData: Transaction = {
+        ...originalTransaction,
+        ...editingTransaction,
+        amount: Number(editingTransaction.amount),
+        // id는 원본 값을 유지
+        id: originalTransaction.id
+      };
+
+      // 업데이트 수행
+      await onUpdate(updateData.id, updateData);
+      setEditingTransaction(null);
+    } catch (error) {
+      console.error('거래 수정 실패:', error);
+      alert(error instanceof Error ? error.message : '거래 수정에 실패했습니다.');
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingTransaction(null);
   };
 
   return (
@@ -131,152 +191,163 @@ export default function TransactionTable({ transactions, onUpdate, onDelete }: T
           </select>
         </div>
         <div className="text-sm">
-          총 {groupedTransactions.length}일의 거래내역
+          총 {transactions.length}건의 거래내역
         </div>
       </div>
 
+      {/* 거래내역 테이블 */}
       <div className="overflow-x-auto">
-        {paginatedGroups.map(({ date, transactions: dailyTransactions, totals }) => (
-          <div key={date} className="mb-6">
-            {/* 날짜 헤더와 일별 합계 */}
-            <div className="bg-white/5 p-4 rounded-t-lg">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">{date}</h3>
-                <div className="flex space-x-6 text-sm">
-                  <span className="text-blue-400">수입: {totals.income.toLocaleString()}원</span>
-                  <span className="text-red-400">지출: {totals.expense.toLocaleString()}원</span>
-                  <span className={totals.balance >= 0 ? 'text-blue-400' : 'text-red-400'}>
-                    잔액: {totals.balance.toLocaleString()}원
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 거래 내역 테이블 */}
-            <table className="w-full">
-              <thead>
-                <tr className="bg-white/5">
-                  <th className="px-4 py-3 text-left">유형</th>
-                  <th className="px-4 py-3 text-left">관</th>
-                  <th className="px-4 py-3 text-left">항</th>
-                  <th className="px-4 py-3 text-left">목</th>
-                  <th className="px-4 py-3 text-right">금액</th>
-                  <th className="px-4 py-3 text-left">메모</th>
-                  <th className="px-4 py-3 text-center">관리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dailyTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-t border-white/10 hover:bg-white/5">
-                    {editingId === transaction.id ? (
+        <table className="w-full">
+          <thead>
+            <tr className="bg-white/5">
+              <th className="px-4 py-3 text-left">날짜</th>
+              <th className="px-4 py-3 text-left">유형</th>
+              <th className="px-4 py-3 text-left">관</th>
+              <th className="px-4 py-3 text-left">항</th>
+              <th className="px-4 py-3 text-left">목</th>
+              <th className="px-4 py-3 text-right">금액</th>
+              <th className="px-4 py-3 text-left">메모</th>
+              <th className="px-4 py-3 text-center">관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedTransactions.map((transaction, index) => (
+              <tr key={transaction.id} className="border-t border-white/10 hover:bg-white/5">
+                <td 
+                  className="px-4 py-3 relative group cursor-help"
+                  onMouseEnter={() => setHoveredDate(transaction.date)}
+                  onMouseLeave={() => setHoveredDate(null)}
+                >
+                  {editingTransaction?.id === transaction.id ? (
+                    <input
+                      type="date"
+                      value={editingTransaction.date}
+                      onChange={(e) => handleEditChange('date', e.target.value)}
+                      className="w-full bg-gray-700 text-white px-2 py-1 rounded"
+                    />
+                  ) : (
+                    <div className="relative">
+                      {transaction.date}
+                      {hoveredDate === transaction.date && pageFirstIndices.has(index) && (
+                        <DailyAmountTooltip
+                          date={transaction.date}
+                          income={dailyTransactions.get(transaction.date)!.income}
+                          expense={dailyTransactions.get(transaction.date)!.expense}
+                          position={getTooltipPosition(index)}
+                        />
+                      )}
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {editingTransaction?.id === transaction.id ? (
+                    <select
+                      value={editingTransaction.type}
+                      onChange={(e) => handleEditChange('type', e.target.value)}
+                      className="w-full bg-gray-700 text-white px-2 py-1 rounded"
+                    >
+                      <option value="income">수입</option>
+                      <option value="expense">지출</option>
+                    </select>
+                  ) : (
+                    <span className={transaction.type === 'income' ? 'text-blue-400' : 'text-red-400'}>
+                      {transaction.type === 'income' ? '수입' : '지출'}
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {editingTransaction?.id === transaction.id ? (
+                    <input
+                      type="text"
+                      value={editingTransaction.section}
+                      onChange={(e) => handleEditChange('section', e.target.value)}
+                      className="w-full bg-gray-700 text-white px-2 py-1 rounded"
+                    />
+                  ) : transaction.section}
+                </td>
+                <td className="px-4 py-3">
+                  {editingTransaction?.id === transaction.id ? (
+                    <input
+                      type="text"
+                      value={editingTransaction.category}
+                      onChange={(e) => handleEditChange('category', e.target.value)}
+                      className="w-full bg-gray-700 text-white px-2 py-1 rounded"
+                    />
+                  ) : transaction.category}
+                </td>
+                <td className="px-4 py-3">
+                  {editingTransaction?.id === transaction.id ? (
+                    <input
+                      type="text"
+                      value={editingTransaction.subcategory}
+                      onChange={(e) => handleEditChange('subcategory', e.target.value)}
+                      className="w-full bg-gray-700 text-white px-2 py-1 rounded"
+                    />
+                  ) : transaction.subcategory}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {editingTransaction?.id === transaction.id ? (
+                    <input
+                      type="text"
+                      value={editingTransaction.amount.toLocaleString()}
+                      onChange={(e) => handleEditChange('amount', e.target.value)}
+                      className="w-full bg-gray-700 text-white px-2 py-1 rounded text-right"
+                    />
+                  ) : (
+                    <span className={transaction.type === 'income' ? 'text-blue-400' : 'text-red-400'}>
+                      {Number(transaction.amount).toLocaleString()}원
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {editingTransaction?.id === transaction.id ? (
+                    <input
+                      type="text"
+                      value={editingTransaction.memo || ''}
+                      onChange={(e) => handleEditChange('memo', e.target.value)}
+                      className="w-full bg-gray-700 text-white px-2 py-1 rounded"
+                    />
+                  ) : transaction.memo}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-center space-x-2">
+                    {editingTransaction?.id === transaction.id ? (
                       <>
-                        <td className="px-4 py-3">
-                          <select
-                            value={editingData?.type || ''}
-                            onChange={(e) => handleEditChange('type', e.target.value)}
-                            className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
-                          >
-                            <option value="income">수입</option>
-                            <option value="expense">지출</option>
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={editingData?.section || ''}
-                            onChange={(e) => handleEditChange('section', e.target.value)}
-                            className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={editingData?.category || ''}
-                            onChange={(e) => handleEditChange('category', e.target.value)}
-                            className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={editingData?.subcategory || ''}
-                            onChange={(e) => handleEditChange('subcategory', e.target.value)}
-                            className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={editingData?.amount.toLocaleString() || ''}
-                            onChange={(e) => handleEditChange('amount', e.target.value)}
-                            className="w-full px-2 py-1 bg-white/10 rounded border border-white/20 text-right"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={editingData?.memo || ''}
-                            onChange={(e) => handleEditChange('memo', e.target.value)}
-                            className="w-full px-2 py-1 bg-white/10 rounded border border-white/20"
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex justify-center space-x-2">
-                            <button
-                              onClick={handleEditSave}
-                              className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm"
-                            >
-                              저장
-                            </button>
-                            <button
-                              onClick={handleEditCancel}
-                              className="px-2 py-1 bg-gray-500/20 hover:bg-gray-500/30 rounded text-sm"
-                            >
-                              취소
-                            </button>
-                          </div>
-                        </td>
+                        <button
+                          onClick={handleEditSave}
+                          className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm"
+                        >
+                          저장
+                        </button>
+                        <button
+                          onClick={handleEditCancel}
+                          className="px-2 py-1 bg-gray-500/20 hover:bg-gray-500/30 rounded text-sm"
+                        >
+                          취소
+                        </button>
                       </>
                     ) : (
                       <>
-                        <td className="px-4 py-3">
-                          <span className={transaction.type === 'income' ? 'text-blue-400' : 'text-red-400'}>
-                            {transaction.type === 'income' ? '수입' : '지출'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">{transaction.section}</td>
-                        <td className="px-4 py-3">{transaction.category}</td>
-                        <td className="px-4 py-3">{transaction.subcategory}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={transaction.type === 'income' ? 'text-blue-400' : 'text-red-400'}>
-                            {transaction.amount.toLocaleString()}원
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">{transaction.memo}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-center space-x-2">
-                            <button
-                              onClick={() => handleEdit(transaction)}
-                              className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm"
-                            >
-                              수정
-                            </button>
-                            <button
-                              onClick={() => handleDelete(transaction)}
-                              className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm"
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        </td>
+                        <button
+                          onClick={() => handleEdit(transaction)}
+                          className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm"
+                        >
+                          수정
+                        </button>
+                        <button
+                          onClick={() => handleDelete(transaction)}
+                          className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm"
+                        >
+                          삭제
+                        </button>
                       </>
                     )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* 페이지네이션 컨트롤 */}
