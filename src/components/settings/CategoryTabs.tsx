@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Tab } from '@headlessui/react';
-import { Category } from '@/types/category';
+import { Category, CategoryType } from '@/types/category';
 import { categoryDB } from '@/utils/indexedDB';
 import CategoryTable from './CategoryTable';
+import { classNames } from '@/utils/classNames';
 
-export const CategoryTabs = () => {
+export default function CategoryTabs() {
   const [categories, setCategories] = useState<Category[]>([]);
 
   const loadCategories = async () => {
@@ -14,7 +15,7 @@ export const CategoryTabs = () => {
       const allCategories = await categoryDB.getAllCategories();
       setCategories(allCategories);
     } catch (error) {
-      console.error('Failed to load categories:', error);
+      console.error('카테고리 로드 실패:', error);
     }
   };
 
@@ -23,41 +24,51 @@ export const CategoryTabs = () => {
   }, []);
 
   return (
-    <div className="w-full">
-      <Tab.Group>
-        <Tab.List className="flex space-x-2 rounded-xl bg-gray-700/50 p-2">
-          {['수입', '지출'].map((category) => (
-            <Tab
-              key={category}
-              className={({ selected }) =>
-                `w-full rounded-lg py-3 text-lg font-medium leading-5 transition-all
-                ${selected
-                  ? 'bg-indigo-600 text-white shadow-lg'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`
-              }
-            >
-              {category}
-            </Tab>
-          ))}
-        </Tab.List>
-        <Tab.Panels className="mt-6">
-          <Tab.Panel>
-            <CategoryTable
-              type="income"
-              categories={categories.filter((cat) => cat.type === 'income')}
-              onUpdate={loadCategories}
-            />
-          </Tab.Panel>
-          <Tab.Panel>
-            <CategoryTable
-              type="expense"
-              categories={categories.filter((cat) => cat.type === 'expense')}
-              onUpdate={loadCategories}
-            />
-          </Tab.Panel>
-        </Tab.Panels>
-      </Tab.Group>
-    </div>
+    <Tab.Group>
+      <Tab.List className="flex space-x-1 rounded-xl bg-gray-700/20 p-1">
+        <Tab
+          className={({ selected }) =>
+            classNames(
+              'w-full rounded-lg py-2.5 text-lg font-medium leading-5',
+              'ring-white/60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
+              selected
+                ? 'bg-white text-blue-600 shadow'
+                : 'text-gray-100 hover:bg-white/[0.12] hover:text-white'
+            )
+          }
+        >
+          수입
+        </Tab>
+        <Tab
+          className={({ selected }) =>
+            classNames(
+              'w-full rounded-lg py-2.5 text-lg font-medium leading-5',
+              'ring-white/60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
+              selected
+                ? 'bg-white text-blue-600 shadow'
+                : 'text-gray-100 hover:bg-white/[0.12] hover:text-white'
+            )
+          }
+        >
+          지출
+        </Tab>
+      </Tab.List>
+      <Tab.Panels className="mt-2">
+        <Tab.Panel>
+          <CategoryTable
+            type={CategoryType.INCOME}
+            categories={categories.filter((cat) => cat.type === CategoryType.INCOME)}
+            onUpdate={loadCategories}
+          />
+        </Tab.Panel>
+        <Tab.Panel>
+          <CategoryTable
+            type={CategoryType.EXPENSE}
+            categories={categories.filter((cat) => cat.type === CategoryType.EXPENSE)}
+            onUpdate={loadCategories}
+          />
+        </Tab.Panel>
+      </Tab.Panels>
+    </Tab.Group>
   );
 } 

@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import ScrollToTop from "@/components/ScrollToTop";
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/toaster';
+import { ScrollToTop } from '@/components/ScrollToTop';
+import { Navigation } from '@/components/Navigation';
+import { initializeCategories } from '@/utils/categoryInitializer';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,18 +22,27 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 앱 최초 실행 시 카테고리 초기화
+  if (typeof window !== 'undefined') {
+    initializeCategories().catch(console.error);
+  }
+
   return (
-    <html lang="en" className="dark scroll-smooth">
-      <body className={`${inter.variable} antialiased bg-gray-900 text-white`}>
-        <nav className="bg-gray-800 border-b border-gray-700">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex justify-start">
-              <div className="text-gray-300 font-semibold">SMART HOLDER BOOK</div>
-            </div>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.variable}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <div className="min-h-screen bg-background antialiased">
+            <Navigation />
+            <main>{children}</main>
+            <ScrollToTop />
+            <Toaster />
           </div>
-        </nav>
-        {children}
-        <ScrollToTop />
+        </ThemeProvider>
       </body>
     </html>
   );

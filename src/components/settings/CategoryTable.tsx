@@ -34,15 +34,15 @@ interface SortableRowProps {
   category: Category;
   index: number;
   startIndex: number;
-  editingId: string | null;
+  editingId: number | null;
   formData: { section: string; category: string; subcategory: string };
   buttonClassName: any;
   inputClassName: string;
   type: CategoryType;
   onEdit: (category: Category) => void;
-  onSave: (id: string) => void;
-  onDelete: (id: string) => void;
-  setEditingId: (id: string | null) => void;
+  onSave: (id: number) => void;
+  onDelete: (id: number) => void;
+  setEditingId: (id: number | null) => void;
   setFormData: (data: any) => void;
   moveCategory: (index: number, direction: 'up' | 'down') => void;
   totalLength: number;
@@ -196,8 +196,8 @@ function SortableRow({
 }
 
 export default function CategoryTable({ type, categories, onUpdate }: CategoryTableProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     section: '',
     category: '',
@@ -262,7 +262,7 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
     return true;
   };
 
-  const isDuplicate = (newCategory: Omit<Category, 'id'>) => {
+  const isDuplicate = (newCategory: Omit<Category, 'id' | 'order'>) => {
     return localCategories.some(
       (cat) =>
         cat.type === newCategory.type &&
@@ -297,9 +297,14 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
         return;
       }
 
+      // 새로운 ID 생성 (현재 카테고리들 중 가장 큰 ID + 1)
+      const maxId = localCategories.reduce((max, cat) => Math.max(max, cat.id), 0);
+      const newId = maxId + 1;
+
       const categoryToAdd: Category = {
         ...newCategory,
-        id: crypto.randomUUID(),
+        id: newId,
+        order: localCategories.length // 새로운 카테고리는 마지막 순서에 추가
       };
 
       await categoryDB.addCategory(categoryToAdd);
@@ -323,27 +328,32 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
     });
   };
 
-  const handleSave = async (id: string) => {
+  const handleSave = async (id: number) => {
     if (!formData.section || !formData.category || !formData.subcategory) {
       return;
     }
 
+    // 현재 카테고리의 order 값을 찾습니다
+    const currentCategory = localCategories.find(cat => cat.id === id);
+    if (!currentCategory) return;
+
     await categoryDB.updateCategory({
-      id,
+      id: id,
       type,
+      order: currentCategory.order,
       ...formData,
     });
     setEditingId(null);
     onUpdate();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     setDeleteId(id);
   };
 
   const confirmDelete = async () => {
     if (deleteId) {
-      await categoryDB.deleteCategory(deleteId);
+      await categoryDB.deleteCategory(deleteId.toString());
       setDeleteId(null);
       onUpdate();
     }
@@ -550,7 +560,7 @@ export default function CategoryTable({ type, categories, onUpdate }: CategoryTa
                 {currentCategories.map((category, index) => (
                   <SortableRow
                     key={category.id}
-                    id={category.id}
+                    id={category.id.toString()}
                     category={category}
                     index={index}
                     startIndex={startIndex}

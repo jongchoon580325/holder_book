@@ -206,33 +206,39 @@ export const validateTransactionData = (data: any[]): boolean => {
 };
 
 // 카테고리 데이터 유효성 검사
-export const validateCategoryData = (data: any[]): boolean => {
-  if (!data || data.length === 0) return false;
+export function validateCategoryData(data: any[]): boolean {
+  if (!Array.isArray(data) || data.length === 0) return false;
 
   return data.every(item => {
-    // 필수 필드 존재 여부 확인
-    const hasRequiredFields = 
-      'type' in item && 
-      'section' in item && 
-      'category' in item;
-
-    if (!hasRequiredFields) return false;
-
-    // 유형 값 검증
-    const validType = 
-      item.type === 'income' || 
-      item.type === 'expense' || 
-      item.type === '수입' || 
-      item.type === '지출';
-
-    // 필수 값이 비어있지 않은지 확인
-    const hasRequiredValues = 
-      item.section?.trim() !== '' && 
-      item.category?.trim() !== '';
-
-    return validType && hasRequiredValues;
+    const type = item.type?.toLowerCase();
+    return (
+      (type === 'income' || type === 'expense' || type === '수입' || type === '지출') &&
+      typeof item.section === 'string' &&
+      typeof item.category === 'string'
+    );
   });
-};
+}
+
+export function parseCategoryData(data: any[]): Category[] {
+  let currentId = 1;
+
+  const categories: Category[] = data.map(item => {
+    // type 필드 정규화
+    const typeStr = item.type?.toLowerCase();
+    const type = (typeStr === 'income' || typeStr === '수입') ? CategoryType.INCOME : CategoryType.EXPENSE;
+
+    return {
+      id: currentId++,
+      type,
+      section: item.section,
+      category: item.category,
+      subcategory: item.subcategory || '',
+      order: item.order || currentId
+    };
+  });
+
+  return categories;
+}
 
 // 카테고리 데이터 가져오기 및 덮어쓰기
 export const importCategories = async (file: File): Promise<void> => {
@@ -244,19 +250,7 @@ export const importCategories = async (file: File): Promise<void> => {
     }
 
     // 카테고리 데이터 형식으로 변환
-    const categories: Category[] = data.map(item => {
-      // type 필드 정규화
-      const type: CategoryType = (item.type === 'income' || item.type === '수입') ? 'income' : 'expense';
-
-      return {
-        id: crypto.randomUUID(),
-        type,
-        section: item.section?.toString().trim() || '',
-        category: item.category?.toString().trim() || '',
-        subcategory: item.subcategory?.toString().trim() || '',
-        order: 0 // replaceAllCategories에서 재정렬됨
-      };
-    });
+    const categories: Category[] = parseCategoryData(data);
 
     // IndexedDB에 덮어쓰기
     await categoryDB.replaceAllCategories(categories);
@@ -278,11 +272,11 @@ export const importTransactions = async (file: File): Promise<void> => {
     // 거래내역 데이터 형식으로 변환
     const transactions: Transaction[] = data.map(item => {
       // type 필드 정규화
-      const type: CategoryType = (item.type === 'income' || item.type === '수입') ? 'income' : 'expense';
+      const typeStr = item.type?.toLowerCase();
+      const type = (typeStr === 'income' || typeStr === '수입') ? CategoryType.INCOME : CategoryType.EXPENSE;
 
-      // 기본 데이터 타입만 포함하는 새로운 객체 생성
       return {
-        id: crypto.randomUUID(), // 새로운 ID 생성
+        id: crypto.randomUUID(),
         type,
         date: item.date?.toString() || '',
         section: item.section?.toString() || '',
@@ -295,12 +289,8 @@ export const importTransactions = async (file: File): Promise<void> => {
       };
     });
 
-    // IndexedDB에 덮어쓰기
     await transactionDB.replaceAllTransactions(transactions);
-
-    // 성공적으로 완료되면 이벤트 발생
-    const event = new CustomEvent('transactionUpdate');
-    window.dispatchEvent(event);
+    window.dispatchEvent(new CustomEvent('transactionUpdate'));
   } catch (error) {
     console.error('거래내역 가져오기 실패:', error);
     throw error;

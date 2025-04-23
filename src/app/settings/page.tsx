@@ -1,7 +1,7 @@
 'use client';
 
 import { PageHeader } from '@/components/common/PageHeader';
-import { CategoryTabs } from '@/components/settings/CategoryTabs';
+import CategoryTabs from '@/components/settings/CategoryTabs';
 import { Toast } from '@/components/common/Toast';
 import { parseCSV, validateTransactionData, validateCategoryData, exportToCSV } from '@/utils/csvHandler';
 import { formatDateForFilename } from '@/utils/dateFormatter';
@@ -109,18 +109,22 @@ export default function SettingsPage() {
         }
 
         // 카테고리 데이터 저장
+        const categories: Category[] = [];
+        let id = 1;  // ID 시작값
+
         for (const item of data) {
           const category: Category = {
-            id: crypto.randomUUID(),
+            id: id++,  // 순차적으로 증가하는 ID 할당
             type: item.type,
             section: item.section,
             category: item.category,
             subcategory: item.subcategory || '',
-            order: parseInt(item.order) || 0
+            order: categories.length + 1
           };
-          await categoryDB.addCategory(category);
+          categories.push(category);
         }
 
+        await categoryDB.replaceAllCategories(categories);
         showToast('카테고리를 성공적으로 가져왔습니다.', 'success');
         
         // 카테고리 테이블 새로고침

@@ -1,12 +1,15 @@
-export type CategoryType = 'income' | 'expense';
+export enum CategoryType {
+  INCOME = 'income',
+  EXPENSE = 'expense'
+}
 
 export interface Category {
-  id: string;
+  id: number;
   type: CategoryType;
   section: string;    // 관
   category: string;   // 항
   subcategory: string; // 목
-  order?: number;  // 순서를 위한 속성 추가
+  order: number;
 }
 
 export interface CategoryFormData {

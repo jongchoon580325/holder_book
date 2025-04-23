@@ -2,98 +2,81 @@ import { Category, CategoryType } from '@/types/category';
 import { categoryDB } from './indexedDB';
 
 interface RawCategory {
-  유형: '수입' | '지출';
-  관: string;
-  항: string;
-  목: string;
+  type: '수입' | '지출';
+  section: string;
+  category: string;
+  subcategory: string;
 }
 
-// 실제 카테고리 데이터
-const initialCategories: RawCategory[] = [
+const defaultCategories: RawCategory[] = [
   // 수입 카테고리
-  { 유형: '수입', 관: '급여', 항: '고정급여', 목: '고정급여' },
-  { 유형: '수입', 관: '급여', 항: '실업급여', 목: '고용노동부' },
-  { 유형: '수입', 관: '부수입', 항: '찬조비', 목: '가족' },
-  { 유형: '수입', 관: '부수입', 항: '찬조비', 목: '외부' },
-  { 유형: '수입', 관: '부수입', 항: '용돈', 목: '자식용돈' },
-  { 유형: '수입', 관: '연금', 항: '국민연금', 목: '연금공단' },
-  { 유형: '수입', 관: '연금', 항: '기초연금', 목: '보건복지부' },
-  { 유형: '수입', 관: '연금', 항: '주택연금', 목: '주택공사' },
-  { 유형: '수입', 관: '연금', 항: '개인연금', 목: '은행' },
-  { 유형: '수입', 관: '임대료', 항: '임대료', 목: '1층카페' },
-  { 유형: '수입', 관: '임대료', 항: '임대료', 목: '한일타운' },
-  { 유형: '수입', 관: '기타', 항: '기타', 목: '기타' },
+  { type: '수입', section: '경상수입', category: '급여', subcategory: '월급' },
+  { type: '수입', section: '경상수입', category: '급여', subcategory: '상여금' },
+  { type: '수입', section: '경상수입', category: '급여', subcategory: '수당' },
+  { type: '수입', section: '경상수입', category: '사업수입', subcategory: '매출액' },
+  { type: '수입', section: '경상수입', category: '사업수입', subcategory: '수수료' },
+  { type: '수입', section: '경상수입', category: '금융수입', subcategory: '이자수입' },
+  { type: '수입', section: '경상수입', category: '금융수입', subcategory: '배당금' },
+  { type: '수입', section: '경상수입', category: '임대수입', subcategory: '월세' },
+  { type: '수입', section: '경상수입', category: '임대수입', subcategory: '전세' },
+  { type: '수입', section: '기타수입', category: '기타', subcategory: '용돈' },
+  { type: '수입', section: '기타수입', category: '기타', subcategory: '상금' },
+  { type: '수입', section: '기타수입', category: '기타', subcategory: '환급금' },
 
   // 지출 카테고리
-  { 유형: '지출', 관: '건강지원비', 항: '건강보조비', 목: '건강보조비' },
-  { 유형: '지출', 관: '건강지원비', 항: '건강보조비', 목: '목욕비' },
-  { 유형: '지출', 관: '건강지원비', 항: '체육활동비', 목: '시설이용비' },
-  { 유형: '지출', 관: '건강지원비', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '경조비', 항: '노회', 목: '부의금' },
-  { 유형: '지출', 관: '경조비', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '관리비', 항: '연료비', 목: '전기료' },
-  { 유형: '지출', 관: '관리비', 항: '영선운영비', 목: '영선비' },
-  { 유형: '지출', 관: '관리비', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '교통비', 항: '대중교통비', 목: '전철비' },
-  { 유형: '지출', 관: '교통비', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '보험료', 항: '상조비', 목: '교원라이프' },
-  { 유형: '지출', 관: '보험료', 항: '생명보험', 목: '한화생명보험' },
-  { 유형: '지출', 관: '보험료', 항: '실비보험', 목: '메리츠보험' },
-  { 유형: '지출', 관: '보험료', 항: '실비보험', 목: '흥국화재보험' },
-  { 유형: '지출', 관: '식비', 항: '부식비', 목: '식자재' },
-  { 유형: '지출', 관: '식비', 항: '부식비', 목: '과일류' },
-  { 유형: '지출', 관: '식비', 항: '정육비', 목: '돼지고기' },
-  { 유형: '지출', 관: '식비', 항: '외식비', 목: '식사류' },
-  { 유형: '지출', 관: '식비', 항: '접대비', 목: '식사류' },
-  { 유형: '지출', 관: '식비', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '어머니', 항: '병원비', 목: '치료비' },
-  { 유형: '지출', 관: '어머니', 항: '생활비', 목: '요양원' },
-  { 유형: '지출', 관: '어머니', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '의료비', 항: '병원비', 목: '이비인후과' },
-  { 유형: '지출', 관: '의료비', 항: '병원비', 목: '치과' },
-  { 유형: '지출', 관: '의료비', 항: '병원비', 목: '한의원' },
-  { 유형: '지출', 관: '의료비', 항: '약품비', 목: '처방약품' },
-  { 유형: '지출', 관: '의료비', 항: '약품비', 목: '약국약품' },
-  { 유형: '지출', 관: '의료비', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '의류잡비', 항: '의류비', 목: '의류비' },
-  { 유형: '지출', 관: '의류잡비', 항: '잡비', 목: '잡비' },
-  { 유형: '지출', 관: '의류잡비', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '자동차', 항: '공과금', 목: '자동차세' },
-  { 유형: '지출', 관: '자동차', 항: '유류비', 목: '렉서스' },
-  { 유형: '지출', 관: '자동차', 항: '관리비', 목: '정비료' },
-  { 유형: '지출', 관: '자동차', 항: '기타', 목: '기타' },
-  { 유형: '지출', 관: '통신비', 항: '이동통신', 목: '장명애' },
-  { 유형: '지출', 관: '통신비', 항: '이동통신', 목: '나종춘' },
-  { 유형: '지출', 관: '통신비', 항: '인터넷', 목: 'SK브로드밴드' },
-  { 유형: '지출', 관: '회비', 항: '모임', 목: '가족모임' },
-  { 유형: '지출', 관: '회비', 항: '모임', 목: '교회모임' },
-  { 유형: '지출', 관: '회비', 항: '모임', 목: '친구모임' },
-  { 유형: '지출', 관: '기타', 항: '기타', 목: '기타' }
+  { type: '지출', section: '고정지출', category: '주거비', subcategory: '월세' },
+  { type: '지출', section: '고정지출', category: '주거비', subcategory: '관리비' },
+  { type: '지출', section: '고정지출', category: '주거비', subcategory: '공과금' },
+  { type: '지출', section: '고정지출', category: '통신비', subcategory: '휴대폰' },
+  { type: '지출', section: '고정지출', category: '통신비', subcategory: '인터넷' },
+  { type: '지출', section: '고정지출', category: '보험료', subcategory: '생명보험' },
+  { type: '지출', section: '고정지출', category: '보험료', subcategory: '실손보험' },
+  { type: '지출', section: '고정지출', category: '보험료', subcategory: '자동차보험' },
+  { type: '지출', section: '생활비', category: '식비', subcategory: '식사' },
+  { type: '지출', section: '생활비', category: '식비', subcategory: '간식' },
+  { type: '지출', section: '생활비', category: '식비', subcategory: '커피/음료' },
+  { type: '지출', section: '생활비', category: '교통비', subcategory: '대중교통' },
+  { type: '지출', section: '생활비', category: '교통비', subcategory: '주유비' },
+  { type: '지출', section: '생활비', category: '교통비', subcategory: '주차비' },
+  { type: '지출', section: '생활비', category: '생필품', subcategory: '세면도구' },
+  { type: '지출', section: '생활비', category: '생필품', subcategory: '청소용품' },
+  { type: '지출', section: '문화생활', category: '여가', subcategory: '영화/공연' },
+  { type: '지출', section: '문화생활', category: '여가', subcategory: '취미' },
+  { type: '지출', section: '문화생활', category: '여가', subcategory: '운동' },
+  { type: '지출', section: '문화생활', category: '쇼핑', subcategory: '의류' },
+  { type: '지출', section: '문화생활', category: '쇼핑', subcategory: '잡화' },
+  { type: '지출', section: '문화생활', category: '쇼핑', subcategory: '전자기기' },
+  { type: '지출', section: '교육비', category: '학습', subcategory: '학원비' },
+  { type: '지출', section: '교육비', category: '학습', subcategory: '교재비' },
+  { type: '지출', section: '교육비', category: '학습', subcategory: '인강' },
+  { type: '지출', section: '의료비', category: '병원', subcategory: '진료비' },
+  { type: '지출', section: '의료비', category: '병원', subcategory: '약값' },
+  { type: '지출', section: '의료비', category: '병원', subcategory: '검사비' },
+  { type: '지출', section: '기타지출', category: '기타', subcategory: '경조사비' },
+  { type: '지출', section: '기타지출', category: '기타', subcategory: '회비' }
 ];
 
-export async function initializeCategories(): Promise<void> {
+export const initializeCategories = async () => {
   try {
-    await categoryDB.connect();
+    // DB에서 카테고리 데이터 확인
     const existingCategories = await categoryDB.getAllCategories();
-
+    
+    // 카테고리가 없을 경우에만 초기화 진행
     if (existingCategories.length === 0) {
-      console.log('카테고리 초기화 시작...');
-      const categories: Category[] = initialCategories.map((raw, index) => ({
-        id: crypto.randomUUID(),
-        type: raw.유형 === '수입' ? 'income' : 'expense' as CategoryType,
-        section: raw.관,
-        category: raw.항,
-        subcategory: raw.목,
-        order: index
+      const categories: Category[] = defaultCategories.map((raw, index) => ({
+        id: index + 1,
+        type: raw.type === '수입' ? CategoryType.INCOME : CategoryType.EXPENSE,
+        section: raw.section,
+        category: raw.category,
+        subcategory: raw.subcategory,
+        order: index + 1
       }));
 
       await categoryDB.replaceAllCategories(categories);
       console.log('카테고리 초기화 완료');
-    } else {
-      console.log('카테고리가 이미 존재합니다. 초기화를 건너뜁니다.');
     }
   } catch (error) {
     console.error('카테고리 초기화 중 오류 발생:', error);
     throw error;
   }
-} 
+}; 
